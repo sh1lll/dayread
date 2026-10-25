@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Day Read</title>
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --bg:#f4f3ef; --surface:#fbfaf7; --raise:#ffffff; --ink:#15181c; --ink2:#3b424b; --mut:#6c737d; --line:#e2dfd8; --line2:#ebe8e2;
+  --accent:#1f4fd1; --hi:#12805a; --mid:#a86a00; --lo:#9aa0a8; --long:#12805a; --short:#c2410c; --warn:#b42318; --r:14px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0c0e11; --surface:#121519; --raise:#171b20; --ink:#eef0f2; --ink2:#c7ccd2; --mut:#8b939d; --line:#262b32; --line2:#1d2228;
+  --accent:#86a5ff; --hi:#3ccf98; --mid:#e9b44c; --lo:#5d646d; --long:#3ccf98; --short:#ff8c5f; --warn:#ff8a7a;
+}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+.wrap{max-width:1080px;margin:0 auto;padding:18px 16px 48px}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.brand{font-weight:750;font-size:17px;letter-spacing:-.01em}
+.date{color:var(--mut)}
+.sp{flex:1}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px}
+.tabs button{border:0;background:none;font-size:13px;padding:5px 12px;border-radius:7px;color:var(--mut);font-weight:600}
+.tabs button[aria-selected=true]{background:var(--raise);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.status{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 12px;white-space:nowrap}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--lo)}
+.status.on i{background:var(--hi);box-shadow:0 0 0 3px color-mix(in srgb,var(--hi) 22%,transparent)}
+.kill{font-size:13px;font-weight:650;border:1px solid color-mix(in srgb,var(--warn) 55%,transparent);color:var(--warn);background:transparent;border-radius:999px;padding:5px 12px}
+.kill.armed{background:var(--warn);color:#fff;border-color:var(--warn)}
+
+/* controls */
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
+.btn{font-weight:650;font-size:14px;line-height:1;border-radius:9px;padding:10px 14px;border:1px solid var(--ink);background:var(--ink);color:var(--raise)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.danger{background:transparent;color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
+.btn:disabled{opacity:.4;cursor:default}
+input,select{background:var(--raise);border:1px solid var(--line);border-radius:9px;padding:8px 10px;min-width:0}
+input[type=date]{width:150px}
+.msg{min-height:20px;margin:-6px 0 12px;color:var(--mut);font-size:14px}.msg.err{color:var(--warn)}
+.banner{font-size:13px;color:var(--ink2);background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:7px 12px;margin-bottom:14px}
+
+/* the read */
+.read{background:var(--raise);border:1px solid var(--line);border-radius:var(--r);padding:24px 26px 20px;margin-bottom:22px}
+.eyebrow{font-size:12px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);display:flex;gap:10px;align-items:center}
+.eyebrow .t{margin-left:auto;letter-spacing:0;text-transform:none;font-weight:500}
+.sentence{font-size:clamp(23px,3.5vw,36px);line-height:1.32;font-weight:650;letter-spacing:-.015em;margin:12px 0 14px}
+.sentence.wait{color:var(--mut);font-weight:550}
+.f{white-space:nowrap;border-bottom:3px solid;padding-bottom:1px}
+.f.hi{border-color:var(--hi)} .f.mid{border-color:var(--mid)} .f.lo{border-color:var(--lo);color:var(--mut);border-bottom-style:dashed} .f.done{border-color:var(--ink)}
+.key{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--mut)}
+.key span{display:inline-flex;align-items:center;gap:7px}
+.key i{width:18px;height:3px;border-radius:2px;display:inline-block}
+
+/* pillars */
+.pillars{background:var(--raise);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.p{display:grid;grid-template-columns:170px minmax(0,1fr) minmax(0,1.2fr);gap:22px;padding:18px 22px;border-top:1px solid var(--line2);align-items:start}
+.p:first-child{border-top:0}
+.who{display:flex;gap:12px;align-items:baseline}
+.num{font-size:12px;font-weight:700;color:var(--mut);width:14px}
+.name{font-size:17px;font-weight:700}
+.q{font-size:13px;color:var(--mut);margin-top:2px}
+.ans{font-size:19px;font-weight:650;line-height:1.3;letter-spacing:-.01em}
+.ans small{display:block;font-size:13px;font-weight:500;color:var(--mut);margin-top:4px;letter-spacing:0}
+.ans.none{color:var(--mut);font-weight:550}
+.facts{display:grid;gap:7px;font-size:14px}
+.fact{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.fact .k{color:var(--ink2);min-width:0}
+.fact .v{font-weight:600;text-align:right;display:inline-flex;align-items:center;gap:8px;flex-shrink:0;max-width:60%}
+.fact.no .v{color:var(--mut);font-weight:500}
+.conf{display:inline-flex;gap:3px;flex-shrink:0}
+.conf i{width:6px;height:6px;border-radius:50%;background:var(--line)}
+.conf.hi i{background:var(--hi)} .conf.mid i:nth-child(-n+2){background:var(--mid)} .conf.lo i:first-child{background:var(--lo)}
+.empty{color:var(--mut);font-size:14px}
+
+/* trades + orders */
+.trade{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.trade .hd{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:14px;color:var(--ink2)}
+.side{font-size:12px;font-weight:800;letter-spacing:.06em;border-radius:6px;padding:3px 8px}
+.side.LONG{color:var(--long);background:color-mix(in srgb,var(--long) 13%,transparent)} .side.SHORT{color:var(--short);background:color-mix(in srgb,var(--short) 13%,transparent)}
+.levels{display:grid;gap:4px;margin-top:10px}
+.lv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;background:var(--surface);border:1px solid var(--line2);border-radius:8px;padding:6px 12px}
+.levels span{font-size:13px;color:var(--mut)} .levels b{font-size:18px;font-weight:650;color:var(--ink);white-space:nowrap}
+.payoff{min-width:0}
+.plan{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-top:10px;font-size:14px}
+.plan .why{color:var(--warn)} .plan .d{color:var(--mut)}
+.orders{margin-top:6px;font-size:13px;color:var(--ink2);display:grid;gap:4px}
+
+/* end-of-day report */
+.report{margin-top:22px}
+.report h2{margin:0 0 4px}
+.rp{background:var(--raise);border:1px solid var(--line);border-radius:var(--r);margin-top:12px;overflow:hidden}
+.rp .hd{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line2)}
+.rp .hd b{font-size:16px}.rp .hd span{color:var(--mut);font-size:14px}
+.rr{display:grid;grid-template-columns:52px minmax(0,1.4fr) minmax(0,1fr) 22px;gap:12px;padding:8px 18px;border-top:1px solid var(--line2);font-size:14px;align-items:baseline}
+.rr:first-of-type{border-top:0}.rr .tm{color:var(--mut)}.rr .o{color:var(--ink2)}
+.rr .v{font-weight:800;text-align:center}.rr .v.right{color:var(--hi)}.rr .v.wrong{color:var(--warn)}.rr .v.none{color:var(--lo)}
+.rp .more{border:0;background:none;color:var(--accent);font-weight:600;font-size:14px;padding:10px 18px}
+@media (max-width:640px){.rr{grid-template-columns:44px minmax(0,1fr) 20px}.rr .o{grid-column:2}.rr .v{grid-row:1/3;grid-column:3}}
+
+/* record */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:16px}
+.st{background:var(--raise);padding:14px 16px}.st span{font-size:12px;color:var(--mut);font-weight:600}.st b{display:block;font-size:24px;font-weight:700;letter-spacing:-.01em}.st small{color:var(--mut);font-size:12px}
+.card{background:var(--raise);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
+.chart svg{width:100%;height:auto;display:block}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:7px 14px;font-size:13px;font-weight:650;color:var(--mut);border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}.seg button[aria-pressed=true]{background:var(--ink);color:var(--raise)}
+.seg button:disabled{opacity:.4;cursor:not-allowed}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:12px;color:var(--mut);font-weight:600;padding:8px 12px;border-bottom:1px solid var(--line)}
+td{padding:7px 12px;border-bottom:1px solid var(--line2)} td.neg{color:var(--short)} td.pos{color:var(--long)}
+.scroll{max-height:360px;overflow:auto;padding:0}
+.note{color:var(--mut);font-size:13px;margin-top:14px;max-width:72ch}
+
+/* accounts */
+.accts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:14px}
+.acct h3{margin:0;font-size:17px}.acct .sub{color:var(--mut);font-size:13px;margin:2px 0 12px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px;margin:12px 0}.kv dt{color:var(--mut)}.kv dd{margin:0;font-weight:600}
+.meter{height:5px;background:var(--line2);border-radius:4px;overflow:hidden}.meter i{display:block;height:100%;background:var(--accent)}
+h2{font-size:18px;margin:28px 0 10px}
+form.add{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:12px;align-items:end}
+form.add label{display:grid;gap:4px;font-size:13px;color:var(--mut)}
+form.add .wide{grid-column:1/-1}
+.code{font:650 clamp(28px,7vw,40px)/1.1 ui-monospace,Menlo,monospace;letter-spacing:.1em;margin:6px 0}
+.list{display:grid;gap:6px}
+.li{display:flex;gap:12px;align-items:center;justify-content:space-between;background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:14px}
+.dlg{position:fixed;inset:0;background:rgba(5,8,12,.55);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+.dlg.open{display:flex}.dlg .box{background:var(--raise);border:1px solid var(--line);border-radius:16px;max-width:500px;padding:22px}
+.dlg h3{margin:0 0 8px}.dlg .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.pair{max-width:420px;margin:12vh auto 0}
+.pair label{display:grid;gap:4px;font-size:13px;color:var(--mut);margin-bottom:12px}.pair input{width:100%}
+.foot{color:var(--mut);font-size:13px;margin-top:22px}
+
+@media (max-width:900px){
+  .p{grid-template-columns:minmax(0,1fr);gap:10px}
+  .read{padding:20px}
+  .grid2{grid-template-columns:1fr}
+}
+@media (max-width:520px){
+  .fact{flex-direction:column;gap:1px}.fact .v{max-width:none;text-align:left}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="top">
+    <span class="brand">Day Read</span><span class="date" id="date"></span>
+    <span class="sp"></span>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" aria-selected="true" data-tab="today">Today</button>
+      <button role="tab" aria-selected="false" data-tab="record">Record</button>
+      <button role="tab" aria-selected="false" data-tab="accounts">Accounts</button>
+    </nav>
+    <span class="status" id="status"><i></i><span id="statustxt">Idle</span></span>
+    <button class="kill" id="kill" title="Stops every order from this app until you turn it off">Stop all orders</button>
+  </div>
+
+  <!-- TODAY -->
+  <section id="today">
+    <div class="controls">
+      <button class="btn" id="live">Start live</button>
+      <span class="sp" style="flex:0 0 6px"></span>
+      <input type="date" id="pday" aria-label="Past day to replay">
+      <button class="btn ghost" id="test">Replay this day</button>
+      <span class="sp"></span>
+      <button class="btn ghost" id="stop" disabled>Stop</button>
+    </div>
+    <p class="msg" id="msg"></p>
+    <div class="banner" id="testing" hidden></div>
+
+    <section class="read">
+      <div class="eyebrow">The read<span class="t" id="updated"></span></div>
+      <p class="sentence wait" id="sentence">Start live around 09:15 ET, or test a past day.</p>
+      <div class="key"><span><i style="background:var(--hi)"></i>Strong — held up on years it never saw</span><span><i style="background:var(--mid)"></i>Useful — right more often than not</span><span><i style="background:var(--lo)"></i>Unknown — tested, no better than chance</span></div>
+    </section>
+
+    <section class="pillars" id="pillars"></section>
+    <section class="report" id="report" hidden></section>
+
+    <p class="foot">Informational only. Not investment advice. Futures can lose more than you put in.</p>
+  </section>
+
+  <!-- RECORD -->
+  <section id="record" hidden>
+    <div class="controls">
+      <label class="date">From <input type="date" id="bfrom" value="2020-01-01"></label>
+      <label class="date">To <input type="date" id="bto"></label>
+      <label class="date">Risk per trade % <input id="brisk" value="0.5" style="width:70px"></label>
+      <button class="btn" id="brun">Show record</button>
+    </div>
+    <p class="msg" id="bmsg"></p>
+    <div id="bout"></div>
+  </section>
+
+  <!-- ACCOUNTS -->
+  <section id="accounts" hidden>
+    <div class="accts" id="acards"></div>
+    <div id="localonly">
+      <h2>Add an account</h2>
+      <div class="card">
+        <form class="add" id="addform">
+          <label>Type<select name="type" id="atype"><option value="paper">Practice (pretend money)</option><option value="webhook">Webhook (a real platform)</option></select></label>
+          <label>Name<input name="name" placeholder="e.g. Practice, Apex eval" required></label>
+          <label>Contract<select name="symbol"><option value="MNQ">MNQ — micro, $2 a point</option><option value="NQ">NQ — full, $20 a point</option></select></label>
+          <label>Account size ($)<input name="equity" inputmode="decimal" value="50000"></label>
+          <label>Risk per trade (% , max 1)<input name="risk_pct" inputmode="decimal" value="0.5"></label>
+          <label>Most contracts<input name="max_qty" inputmode="numeric" value="5"></label>
+          <label>Trades a day<input name="max_trades_day" inputmode="numeric" value="2"></label>
+          <label>Day risk budget (%)<input name="max_day_risk_pct" inputmode="decimal" value="1"></label>
+          <label class="wide hook" hidden>Webhook address (from your platform or bridge)<input name="url" placeholder="https://…"></label>
+          <label class="wide hook" hidden>Authorization header, if your platform gives one (kept only on this computer)<input name="auth" autocomplete="off"></label>
+          <label class="wide hook" hidden style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" name="live" style="width:auto"> Allow real orders from this account (you can still keep it on Off or Confirm)</label>
+          <div class="wide"><button class="btn" type="submit">Add account</button> <span class="msg" id="amsg" style="margin:0 0 0 8px"></span></div>
+        </form>
+      </div>
+      <h2>Devices</h2>
+      <p class="note" style="margin-top:0">A paired phone or computer can see everything and send orders, from any network if Day Read runs with <code>--lan</code>. Anything not paired sees only a pairing screen.</p>
+      <div class="controls"><button class="btn" id="pairnew">Pair a device</button></div>
+      <div class="card" id="pairbox" hidden></div>
+      <div class="list" id="devlist" style="margin-top:10px"></div>
+    </div>
+    <p class="note" id="remoteonly" hidden>Accounts and devices can be added or removed only on the computer running Day Read.</p>
+  </section>
+</div>
+
+<div class="dlg" id="dlg"><div class="box" role="dialog" aria-modal="true" aria-labelledby="dlgt"><h3 id="dlgt">Turn on Auto?</h3>
+  <p id="dlgp"></p><div class="acts"><button class="btn ghost" id="dno">Not now</button><button class="btn" id="dyes">Turn on Auto</button></div></div></div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const api=(p,b)=>fetch(p,b?{method:'POST',headers:{'X-DayRead':'1'},body:JSON.stringify(b)}:{}).then(r=>{ if(r.status===401){ pairScreen(); throw new Error('not paired') } return r.json() });
+const el=(tag,cls,txt)=>{ const e=document.createElement(tag); if(cls) e.className=cls; if(txt!=null) e.textContent=txt; return e };
+const px=v=>v==null||isNaN(v)?'—':(Math.round(v*4)/4).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const hm=iso=>iso?String(iso).slice(11,16):'—';
+const pct=p=>Math.round(p*100)+'%';
+let N=0, es=null, local=false, S=null, ORD=[], REC=null;
+
+/* ---------- state built from the engine's statements ---------- */
+function fresh(){ return {now:null, n:0, price:null, lo:null, hi:null, bias:{}, levels:[], levelsAt:null, extremes:null, next:{}, touches:{}, touch:null, approachWick:null, quiet:null, signals:[], moc:null, tc:{}} }
+const key=l=>(Math.round(l*100)/100).toFixed(2);
+
+function take(e){
+  const f=e.f; S.now=e.at; S.n++;
+  const lv=e.l!=null?key(e.l):null; const T=lv?(S.touches[lv]||(S.touches[lv]={l:e.l, at:e.at, side:'', reads:{}})):null;
+  switch(f){
+    case 'status': S.price=e.price; S.priceAt=e.at; S.lo=e.lo; S.hi=e.hi; S.up=e.up; S.dn=e.dn; break;
+    case 'range': S.lo=e.lo; S.hi=e.hi; break;
+    case 'gap': S.bias.gap={pts:e.pts, fill:e.fill, until:e.until}; break;
+    case 'openrange': S.bias.range={c:e.c, lo:e.lo, hi:e.hi}; break;
+    case 'openvol': S.bias.vol={r:e.r}; break;
+    case 'push': S.bias.push={side:e.side, px:e.px, p:e.p}; break;
+    case 'pushdone': S.bias.pushDone=true; break;
+    case 'fake': S.bias.fake={tier:e.tier, tgt:e.tgt}; break;
+    case 'lean': S.bias.lean={p:e.p, up:e.up, at:hm(e.at)}; break;
+    case 'daytype': S.bias.daytype=e.p; break;
+    case 'dayread': S.bias.dayread={at:hm(e.at), hs:e.hs, hp:e.hp, ls:e.ls, lp:e.lp, confident:e.confident}; break;
+    case 'extremes': S.extremes={hi:e.hi, lo:e.lo, at:e.when}; break;
+    case 'levels': S.levels=e.list||[]; S.levelsAt=e.by; break;
+    case 'mc': S.next.mc={l:e.l, by:e.by, at:e.at}; break;
+    case 'ww': S.next.ww={l:e.l, lo:e.lo, hi:e.hi, eta:e.eta, at:e.at}; break;
+    case 'ap': S.next.ap={l:e.l, eta:e.eta, at:e.at}; break;
+    case 'lc': S.next.lc={l:e.l, t:e.time, win:e.win, at:e.at}; break;
+    case 'apwick': S.approachWick=e.pts; break;
+    case 'tc': S.tc[key(e.l)]={c:e.c, rlo:e.rlo, rhi:e.rhi}; break;
+    case 'quiet': S.quiet={p:e.p, word:e.word}; break;
+    case 'moc': S.moc={up:e.up, dn:e.dn}; break;
+    case 'touch': T.at=e.at; T.side=e.side; T.poke=e.poke; S.touch=lv; break;
+    case 'pierce': T.pierce=e.pts; T.holdNow=e.hold; break;
+    case 'read': T.reads[e.s]=e.p; T.lastRead={s:e.s, p:e.p}; break;
+    case 'candle': T.wick=e.wick; T.closeBack=e.close; break;
+    case 'spd': T.spd={tier:e.tier, pts:e.pts}; break;
+    case 'bspd': T.bspd={tier:e.tier, pts:e.pts}; break;
+    case 'wk': T.wk={tier:e.tier, p:e.p}; break;
+    case 'bp': T.bp={tier:e.tier}; break;
+    case 'hold': T.out='hold'; T.outAt=e.at; T.maxPoke=e.poke; T.run=e.run!=null?{c:e.run, lo:e.run_lo, hi:e.run_hi}:null; S.lastOut=lv; break;
+    case 'brk': T.out='break'; T.outAt=e.at; T.toward=e.toward; T.through=e.through; S.lastOut=lv; break;
+  }
+}
+
+/* ---------- rendering ---------- */
+const F=(txt,c)=>{ const s=el('span','f '+c,txt); return s };
+const conf=c=>{ const s=el('span','conf '+c); s.append(el('i'),el('i'),el('i')); s.title={hi:'Strong',mid:'Useful',lo:'Unknown — no better than chance'}[c]||''; return s };
+function fact(k,v,c,no){ const d=el('div','fact'+(no?' no':'')); const a=el('span','k',k); const b=el('span','v',v); if(c) b.append(conf(c)); d.append(a,b); return d }
+function pillar(n,name,q,ans,sub,facts,cls){ const p=el('div','p'); const w=el('div'); const who=el('div','who'); who.append(el('span','num',n)); const nm=el('div'); nm.append(el('div','name',name),el('div','q',q)); who.append(nm); w.append(who);
+  const a=el('div',ans instanceof Node?'payoff':'ans'+(cls?' '+cls:'')); if(ans instanceof Node) a.append(ans); else { a.textContent=ans; if(sub){ a.append(el('small',null,sub)) } } const fs=el('div','facts'); facts.filter(Boolean).forEach(f=>fs.append(f)); if(!facts.filter(Boolean).length) fs.append(el('div','empty','Nothing yet.')); p.append(w,a,fs); return p }
+
+function nextTarget(){
+  const now=Date.parse(S.now||0), n=S.next;
+  if(n.mc && now<=Date.parse(n.mc.by)) return {l:n.mc.l, when:hm(n.mc.by), c:'hi', how:'within 60 seconds', note:'calls like this were right about 7 in 10'};
+  const ww=n.ww, ap=n.ap, fresh=x=>x && now-Date.parse(x.at)<5*60e3;
+  if(fresh(ap) && (!ww || Date.parse(ap.at)>=Date.parse(ww.at))) return {l:ap.l, when:hm(ap.eta), c:'mid', how:'±2 min', note:'about 6 in 10 inside ±2 min'};
+  if(fresh(ww)) return {l:ww.l, when:ww.eta||hm(ww.lo), c:'mid', how:'window '+hm(ww.lo)+'–'+hm(ww.hi), note:'the window catches it about 8 in 10'};
+  if(n.lc && (!S.price || now<Date.parse(n.lc.t)+3*60e3)) return {l:n.lc.l, when:hm(n.lc.t), c:'mid', how:n.lc.win?'window '+n.lc.win:'±2 min', note:'the window caught it about 3 days in 4'};
+  return null;
+}
+function activeTouch(){
+  let T=S.touch&&S.touches[S.touch]; if(!T) return null; const now=Date.parse(S.now||0);
+  const R=S.lastOut&&S.touches[S.lastOut];                            // a touch that just finished tells the whole story; prefer it over one that has only just started
+  if(R && R!==T && !T.out && !T.lastRead && now-Date.parse(R.outAt)<90e3) T=R;
+  if(T.outAt && now-Date.parse(T.outAt)>4*60e3) return null; if(!T.outAt && now-Date.parse(T.at)>6*60e3) return null; return T }
+
+function renderSentence(){
+  const s=$('#sentence'); s.textContent=''; s.className='sentence';
+  const T=activeTouch(), nt=nextTarget();
+  if(T){
+    const wick=T.maxPoke!=null?T.maxPoke+' pts':T.wick!=null?'≈ '+Math.round(T.wick)+' pts':(T.poke?'≈ '+T.poke+' pts':'?');
+    s.append('At '+hm(T.at)+', price tagged ',F(px(T.l),'done'),T.maxPoke!=null?', wicked ':', wick ',F(wick,T.maxPoke!=null?'done':T.wick!=null?'mid':'lo'),', ');
+    if(T.out==='hold') s.append(F('held','done'),', runs ',F(T.run?'~'+T.run.c+' pts in 30 min':(T.spd&&T.spd.pts?T.spd.pts+' pts':'?'),T.run?'mid':'lo'));
+    else if(T.out==='break') s.append(F('broke'+(T.through?' ('+T.through+' pts through)':''),'done'),', runs ',F(T.toward?'toward '+px(T.toward):'?',T.toward?'mid':'lo'));
+    else { const r=T.lastRead; if(r&&r.s>=60) s.append(F((r.p>=.5?'holds ':'breaks ')+pct(r.p>=.5?r.p:1-r.p),'hi')); else if(r) s.append(F('hold '+pct(r.p)+' so far','mid')); else s.append(F('holds or breaks?','lo')); s.append(', runs ',F('?','lo')) }
+    return }
+  if(nt){ const w=S.approachWick; s.append('At ',F(nt.when+(nt.how==='±2 min'||nt.how==='within 60 seconds'?' ±2 min':''),nt.c),', price tags ',F(px(nt.l),'hi'),', wicks ',F(w?'≈ '+w+' pts':'?',w?'mid':'lo'),', ',F('holds or breaks?','lo'),', runs ',F('?','lo')); return }
+  s.className='sentence wait'; s.textContent=!S.now?'Start live around 09:15 ET, or test a past day.':(S.up||S.dn)?'Next levels: '+(S.up?'↑ '+px(S.up):'')+(S.up&&S.dn?' · ':'')+(S.dn?'↓ '+px(S.dn):'')+' — not close enough to time yet.':'Watching for the next level…';
+}
+
+function renderPillars(){
+  const P=$('#pillars'); P.textContent=''; const b=S.bias;
+  // 1 Bias
+  let ans='Waiting for the pre-open read', sub='';
+  if(b.range||b.vol){ const big=b.range&&b.range.c>200?'Big':b.range&&b.range.c<110?'Quiet':'Normal'; ans=big+' open'+(b.vol?', '+(b.vol.r>1.25?'heavy':b.vol.r<0.85?'light':'normal')+' volume':''); if(b.fake) ans+=b.fake.tier==='hi'?' — dip likely goes further first':' — dip probably done'; sub=b.lean?'Day direction: lean '+(b.lean.up?'UP':'DOWN')+' since '+b.lean.at:'No call on the day\'s direction' }
+  P.append(pillar(1,'Bias','How will the open behave?',ans,sub,[
+    b.range&&fact('First 30 min range','≈ '+b.range.c+' pts ('+b.range.lo+'–'+b.range.hi+')','hi'),
+    b.vol&&fact('Opening volume',b.vol.r.toFixed(2)+'× normal','hi'),
+    b.push&&fact('Overnight extreme hit first',(b.pushDone?'✓ ':'')+b.push.side+' · '+px(b.push.px)+' · ~'+b.push.p+'%',b.push.p>=80?'hi':'mid'),
+    b.fake&&fact('Opening fake-out',b.fake.tier==='hi'?'dip goes further · ~7 in 10':'dip done · only ~1 in 3 go further','mid'),
+    b.gap&&fact('Gap'+(b.gap.pts?' '+b.gap.pts+' pts':''),'fills'+(b.gap.until?' by '+b.gap.until:'')+' '+b.gap.fill,'lo'),
+    b.lean?fact('Day direction ('+b.lean.at+')',(b.lean.up?'lean up':'lean down')+' ~'+pct(b.lean.p),'mid'):fact('Day direction','No call','lo',true),
+    b.dayread&&fact('Day read '+b.dayread.at,(b.dayread.hs?'high '+b.dayread.hs+' '+b.dayread.hp+'%':'')+(b.dayread.ls?' · low '+b.dayread.ls+' '+b.dayread.lp+'%':''),b.dayread.confident?'hi':'mid'),
+    b.daytype!=null&&fact('Trend-day odds',pct(b.daytype),'mid'),
+  ],(b.range||b.vol)?'':'none'));
+  // 2 Where
+  const lv=S.levels.slice().sort((x,y)=>y.p-x.p); const top=lv[0];
+  P.append(pillar(2,'Where','Which price?',top?px(top.l):'Waiting for today\'s levels',top?pct(top.p)+' to be reached '+S.levelsAt:'',[
+    ...lv.slice(1,4).map(v=>fact(px(v.l),pct(v.p),'hi')),
+    S.extremes&&fact('Day high / low ('+S.extremes.at+', 80%)','≤ '+px(S.extremes.hi)+' / ≥ '+px(S.extremes.lo),'hi'),
+    fact('Holds or breaks before the touch','No call','lo',true),
+  ],top?'':'none'));
+  // 3 When
+  const nt=nextTarget();
+  P.append(pillar(3,'When','What minute?',nt?nt.when+(nt.how==='±2 min'||nt.how==='within 60 seconds'?' ±2 min':''):'No level close enough to time',nt?px(nt.l)+' · '+nt.how+' · '+nt.note:'',[
+    nt&&fact('Level',px(nt.l),'hi'),
+    nt&&fact('How sure',nt.how,nt.c),
+    fact('More than 5 minutes ahead','window only','lo',true),
+    S.quiet&&fact('Next 15 minutes',S.quiet.word+' · tight range '+pct(S.quiet.p),'hi'),
+  ],nt?'':'none'));
+  // 4 How
+  const T=activeTouch()||(S.touch&&S.touches[S.touch]);
+  const tc=nt&&S.tc[key(nt.l)];
+  let hAns='No touch yet', hSub=tc?'Next touch candle ≈ '+tc.c+' pts high-to-low ('+Math.round(tc.rlo)+'–'+Math.round(tc.rhi)+')':'';
+  if(T){ hAns=px(T.l)+' '+(T.out==='hold'?'held':T.out==='break'?'broke':'being tested'); hSub='touched '+hm(T.at)+(T.side?' as '+T.side:'') }
+  P.append(pillar(4,'How','What does the candle do?',hAns,hSub,T?[
+    !T.lastRead&&!T.out&&fact('Hold odds before the touch','~47% · a coin flip','lo'),
+    T.pierce!=null&&!T.out&&fact('Pierced','by '+T.pierce+' pts · hold odds now '+pct(T.holdNow),'mid'),
+    T.wick!=null&&fact('Wick through the level','≈ '+Math.round(T.wick)+' pts','mid'),
+    T.closeBack!=null&&fact('Candle closes back','~'+pct(T.closeBack),'hi'),
+    T.lastRead&&fact('+'+T.lastRead.s+' s read','hold '+pct(T.lastRead.p),T.lastRead.s>=60?'hi':'mid'),
+    T.out==='hold'&&T.run&&fact('A hold usually runs','~'+T.run.c+' pts in 30 min ('+T.run.lo+'–'+T.run.hi+')','mid'),
+    T.out==='break'&&T.toward&&fact('Breaks run toward',px(T.toward),'mid'),
+    T.spd&&fact('Speed if it holds',T.spd.tier+(T.spd.pts?' · '+T.spd.pts+' pts':''),'hi'),
+    T.bspd&&fact('Speed if it breaks',T.bspd.tier+(T.bspd.pts?' · '+T.bspd.pts+' pts':''),'hi'),
+    T.wk&&fact('More poke first',T.wk.tier==='hi'?'likely':'unlikely · ~'+pct(T.wk.p),'hi'),
+    T.bp&&fact('Pull-back before a break runs',T.bp.tier==='hi'?'likely':'unlikely','hi'),
+  ]:[tc&&fact('Next candle size','≈ '+tc.c+' pts','hi')],T?'':'none'));
+  // 5 Payoff
+  const box=el('div'); const sigs=S.signals.slice().reverse();
+  if(!sigs.length) box.append(el('div','ans none','No trade yet'),el('div','empty','The tested setup appears here the moment it qualifies.'));
+  sigs.forEach(sg=>box.append(tradeCard(sg)));
+  const facts=[REC&&fact('Record for this setup',Math.round(REC.win*100)+'% win · '+(REC.avg_r>=0?'+':'')+REC.avg_r.toFixed(2)+'R at 3-to-1','mid'), fact('Goal: 65% at 3-to-1','not reached','',true), S.moc&&fact('End-of-day backup','buy '+px(S.moc.up)+' / sell '+px(S.moc.dn),'mid')];
+  const p=pillar(5,'Payoff','Is there a trade?',box,null,facts); P.append(p);
+}
+
+function tradeCard(sg){
+  const gone=S.now&&Date.parse(S.now)>Date.parse(sg.until);
+  const c=el('div','trade'); const hd=el('div','hd'); hd.append(el('span','side '+sg.side,sg.side),el('span',null,hm(sg.ts)+(gone?' · expired '+hm(sg.until):' · valid to '+hm(sg.until)))); c.append(hd); if(gone) c.style.opacity='.6';
+  const lv=el('div','levels'); [['Entry',sg.entry],['Stop',sg.stop],['Target',sg.target]].forEach(([k,v])=>{ const r=el('div','lv'); r.append(el('span',null,k),el('b',null,px(v))); lv.append(r) });
+  lv.append(el('div','date','Risk '+(sg.risk_pts!=null?sg.risk_pts.toFixed(2)+' pts':'—')+' · target 3× the risk')); c.append(lv);
+  const plans=sg.plans||[];
+  if(sg.replay){ const d=el('div','plan'); d.append(el('span','d','Past day — shown for review. Nothing is sent.')); c.append(d) }
+  else if(!plans.length){ const d=el('div','plan'); d.append(el('span','d','To send signals, add an account in Accounts and set it to Confirm or Auto.')); c.append(d) }
+  plans.forEach(pl=>{ const d=el('div','plan'); d.append(el('b',null,pl.name));
+    if(pl.blocked) d.append(el('span','why','Blocked: '+pl.blocked));
+    else { d.append(el('span','d',pl.qty+' contract'+(pl.qty>1?'s':'')+' · '+pl.risk_pct+'% at risk')); if(pl.mode==='confirm'){ const b=el('button','btn','Send'); b.onclick=async()=>{ b.disabled=true; const r=await api('/api/send',{signal:sg.id,account:pl.account}); b.textContent=r.ok?'Sent':(r.error||'Not sent'); setTimeout(loadOrders,400) }; d.append(b) } else d.append(el('span','d','sent automatically')) }
+    c.append(d) });
+  const cp=el('button','btn ghost','Copy'); cp.style.marginTop='10px'; cp.onclick=()=>{ const x=`NQ ${sg.side} entry ${px(sg.entry)} stop ${px(sg.stop)} target ${px(sg.target)} valid to ${hm(sg.until)} ET`; (navigator.clipboard?navigator.clipboard.writeText(x):Promise.reject()).then(()=>cp.textContent='Copied',()=>cp.textContent=x) }; c.append(cp);
+  const od=el('div','orders'); ORD.filter(o=>o.signal===sg.id).forEach(o=>od.append(el('div',null,(o.status==='filled'?'Practice fill':o.status==='sent'?'Sent':'Not sent')+' · '+o.account+' · '+o.qty+' × '+o.sym+(o.status==='failed'&&o.detail?' · '+o.detail:'')))); c.append(od); return c }
+
+
+let raf=0; function render(){ if(raf) return; raf=requestAnimationFrame(()=>{ raf=0; renderSentence(); renderPillars();
+  $('#updated').textContent=S.now?'updated '+String(S.now).slice(11,19):'' }) }        // the engine reports price only every few minutes, so no price here
+
+/* ---------- end-of-day report ---------- */
+const PNAME={bias:'Bias',where:'Where',when:'When',how:'How',payoff:'Payoff'};
+function renderReport(){ const box=$('#report'), R=S&&S.report; box.textContent=''; box.hidden=!R; if(!R) return;
+  const d=new Date(R.day+'T12:00:00'); box.append(el('h2',null,'How the calls did — '+d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})),el('p','note',R.note));
+  Object.keys(PNAME).forEach(k=>{ const rows=R.pillars[k]||[], sm=R.summary[k]||{right:0,graded:0}; const c=el('div','rp'); const hd=el('div','hd');
+    hd.append(el('b',null,PNAME[k]),el('span',null,sm.graded?sm.right+' of '+sm.graded+' right':'nothing to grade')); c.append(hd);
+    if(!rows.length){ const e=el('div','rr'); e.append(el('span','tm',''),el('span','o','No calls of this kind that day.')); c.append(e) }
+    const draw=n=>{ c.querySelectorAll('.rr,.more').forEach(x=>x.remove()); rows.slice(0,n).forEach(r=>{ const rr=el('div','rr'); const mark=r.verdict==='right'?'✓':r.verdict==='wrong'?'✗':'–';
+        const v=el('span','v '+(r.verdict==='right'?'right':r.verdict==='wrong'?'wrong':'none'),mark); v.title=r.verdict; rr.append(el('span','tm',r.at),el('span',null,r.call),el('span','o',r.outcome),v); c.append(rr) });
+      if(rows.length>n){ const m=el('button','more','Show all '+rows.length); m.onclick=()=>draw(rows.length); c.append(m) } };
+    if(rows.length) draw(8); box.append(c) }) }
+
+/* ---------- run control ---------- */
+function setRun(s){ $('#status').classList.toggle('on',!!s.running); $('#statustxt').textContent=s.running?(s.label||'Running'):'Idle';
+  $('#live').disabled=$('#test').disabled=!!s.running; $('#stop').disabled=!s.running; $('#kill').classList.toggle('armed',!!s.kill); $('#kill').textContent=s.kill?'Orders stopped — resume':'Stop all orders' }
+function msg(t,err){ $('#msg').textContent=t||''; $('#msg').className='msg'+(err?' err':'') }
+async function run(body){ msg(''); const r=await api('/api/run',body); if(r.error){ msg(r.error,true); return }
+  S=fresh(); N=0; render(); renderReport(); $('#testing').hidden=body.mode!=='replay'; $('#testing').textContent=body.mode==='replay'?'Replaying '+body.date+' minute by minute, as it happened. For review only — nothing can be sent from a past day.':''; setRun({running:true,label:r.label,kill:$('#kill').classList.contains('armed')}); listen() }
+$('#live').onclick=()=>run({mode:'live'});
+$('#test').onclick=()=>{ if(!$('#pday').value) return msg('Pick a past trading day first.',true); run({mode:'replay',date:$('#pday').value,from:'09:29',to:'16:00',step:10}) };
+$('#stop').onclick=async()=>{ await api('/api/stop',{}); msg('Stopping…') };
+$('#kill').onclick=async()=>{ const on=!$('#kill').classList.contains('armed'); await api('/api/kill',{on}); setRun(await api('/api/state')); render() };
+
+function listen(){ if(es) es.close(); es=new EventSource('/api/events?from='+N);
+  es.onerror=()=>fetch('/api/state').then(r=>r.json()).then(s=>{ if(s.paired===false) pairScreen() }).catch(()=>{});
+  es.onmessage=e=>{ N++; const v=JSON.parse(e.data);
+    if(v.t==='fact'){ take(v); render() }
+    else if(v.t==='signal'){ S.signals=S.signals.filter(x=>x.id!==v.id); S.signals.push(v); render(); loadOrders() }
+    else if(v.t==='order'){ loadOrders() }
+    else if(v.t==='report'){ S.report=v; renderReport() }
+    else if(v.t==='error'){ msg(v.msg,true) }
+    else if(v.t==='done'){ api('/api/state').then(setRun); if(!S.n&&!$('#msg').textContent) msg('Finished. The engine had nothing for that day.') } } }
+
+async function loadOrders(){ try{ ORD=await api('/api/orders'); render() } catch(e){} }
+
+/* ---------- record ---------- */
+let BT=null, view='r';
+async function runBacktest(){ $('#bmsg').textContent='Working…'; $('#bmsg').className='msg'; const q=new URLSearchParams({start:$('#bfrom').value,end:$('#bto').value,risk:$('#brisk').value});
+  BT=await api('/api/backtest?'+q); $('#bmsg').textContent=''; drawBT() }
+$('#brun').onclick=runBacktest;
+function drawBT(){ const o=$('#bout'); o.textContent=''; if(!BT||BT.error){ $('#bmsg').textContent=(BT&&BT.error)||'No result.'; $('#bmsg').className='msg err'; return } if(!BT.n){ $('#bmsg').textContent='No trades in that range.'; return }
+  const P=x=>(x*100).toFixed(1)+'%', R=x=>(x>=0?'+':'')+x.toFixed(2)+'R';
+  const st=el('div','stats'); [['Trades',BT.n,BT.start+' → '+BT.end],['Win rate',P(BT.win),'at 3-to-1 targets'],['Average',R(BT.avg_r),'95% range '+R(BT.ci_lo)+' to '+R(BT.ci_hi)],['Total',R(BT.total_r),BT.end_equity_pct.toFixed(0)+'% at '+BT.risk_pct+'% risk'],['Deepest drop',BT.max_dd_r.toFixed(1)+'R',BT.max_dd_pct.toFixed(1)+'% of the account'],['Longest losing run',BT.worst_streak,'trades in a row']]
+    .forEach(([a,b,c])=>{ const d=el('div','st'); d.append(el('span',null,a),el('b',null,String(b)),el('small',null,c)); st.append(d) }); o.append(st);
+  const ch=el('div','card chart'); const sg=el('div','seg'); [['r','In R'],['eq','% of account']].forEach(([v,t])=>{ const b=el('button',null,t); b.setAttribute('aria-pressed',String(view===v)); b.onclick=()=>{ view=v; drawBT() }; sg.append(b) }); ch.append(sg); const sv=el('div'); ch.append(sv); o.append(ch); curve(sv);
+  const g=el('div','grid2'); const y=el('div','card scroll'); y.innerHTML='<table><thead><tr><th>Year</th><th>Trades</th><th>Win</th><th>Average</th></tr></thead><tbody></tbody></table>';
+  BT.per_year.forEach(p=>{ const tr=el('tr'); [[p.year],[p.n],[P(p.win)],[R(p.avg_r),p.avg_r<0?'neg':'pos']].forEach(([t,c])=>tr.append(el('td',c||null,String(t)))); y.querySelector('tbody').append(tr) });
+  const tl=el('div','card scroll'); tl.innerHTML='<table><thead><tr><th>Day</th><th>Side</th><th>Result</th></tr></thead><tbody></tbody></table>';
+  BT.trades.slice(0,400).forEach(p=>{ const tr=el('tr'); [[p.day],[p.side],[R(p.r),p.r<0?'neg':'pos']].forEach(([t,c])=>tr.append(el('td',c||null,String(t)))); tl.querySelector('tbody').append(tr) });
+  g.append(y,tl); o.append(g);
+  o.append(el('p','note','This is the past, not a promise. The trade list was last updated '+BT.end+'. One trade per signal, a fixed 3-to-1 target and a 60-minute limit. The signals were built on the earlier years and checked on later ones, but the later years have since been looked at many times, so treat the whole record as in-sample.')) }
+function curve(box){ const c=BT.curve, W=800, H=260, L=44, Rr=12, T=12, B=24, vals=c.map(p=>p[view]), t=c.map(p=>Date.parse(p.d)); const lo=Math.min(0,...vals), hi=Math.max(0,...vals), x0=t[0], x1=t[t.length-1]||t[0]+1;
+  const X=v=>L+(v-x0)/((x1-x0)||1)*(W-L-Rr), Y=v=>T+(1-(v-lo)/((hi-lo)||1))*(H-T-B); const ns='http://www.w3.org/2000/svg', s=document.createElementNS(ns,'svg'); s.setAttribute('viewBox',`0 0 ${W} ${H}`); s.setAttribute('role','img'); s.setAttribute('aria-label','Running total of results');
+  const add=(n,a,txt)=>{ const e=document.createElementNS(ns,n); for(const k in a) e.setAttribute(k,a[k]); if(txt!=null) e.textContent=txt; s.append(e); return e };
+  for(let i=0;i<=4;i++){ const v=lo+(hi-lo)*i/4; add('line',{x1:L,x2:W-Rr,y1:Y(v),y2:Y(v),stroke:'var(--line2)'}); add('text',{x:L-8,y:Y(v)+4,'text-anchor':'end',fill:'var(--mut)','font-size':11},view==='r'?v.toFixed(0):v.toFixed(0)+'%') }
+  for(let yy=new Date(x0).getUTCFullYear()+1;yy<=new Date(x1).getUTCFullYear();yy++){ const xx=X(Date.UTC(yy,0,1)); add('text',{x:xx+3,y:H-6,fill:'var(--mut)','font-size':11},String(yy)) }
+  add('line',{x1:L,x2:W-Rr,y1:Y(0),y2:Y(0),stroke:'var(--mut)'}); add('polyline',{points:c.map((p,i)=>X(t[i]).toFixed(1)+','+Y(vals[i]).toFixed(1)).join(' '),fill:'none',stroke:'var(--accent)','stroke-width':2,'stroke-linejoin':'round'}); box.append(s) }
+
+/* ---------- accounts ---------- */
+let pendingAuto=null;
+async function loadAccounts(){ const a=await api('/api/accounts'), box=$('#acards'); box.textContent='';
+  if(!a.length) box.append(el('div','card empty','No accounts yet. Add a practice account below to try sending signals with pretend money.'));
+  a.forEach(x=>{ const c=el('div','card acct'); c.append(el('h3',null,x.name),el('div','sub',x.type==='paper'?'Practice — pretend money, nothing is sent':(x.live?'Real orders allowed':'Real orders off')+(x.host?' · '+x.host:'')));
+    const sg=el('div','seg'); [['off','Off'],['confirm','Confirm'],['auto','Auto']].forEach(([mm,t])=>{ const b=el('button',null,t); b.setAttribute('aria-pressed',String(x.mode===mm)); b.disabled=!x.enabled&&mm!=='off'; b.onclick=()=>setMode(x,mm); sg.append(b) }); c.append(sg);
+    const kv=el('dl','kv'); [['Account size','$'+(x.equity||0).toLocaleString()],['Risk per trade',x.risk_pct+'%'],['Contract',x.symbol],['Most contracts',x.max_qty],['Trades a day',x.max_trades_day],['Day risk budget',x.max_day_risk_pct+'%']].forEach(([k,v])=>kv.append(el('dt',null,k),el('dd',null,String(v)))); c.append(kv);
+    const mt=el('div','meter'); const mi=el('i'); mi.style.width=Math.min(100,(x.today_risk_pct/(x.max_day_risk_pct||1))*100)+'%'; mt.append(mi); c.append(mt,el('div','sub','Today: '+x.today_trades+' order'+(x.today_trades===1?'':'s')+', '+x.today_risk_pct+'% risked'));
+    if(local){ const rm=el('button','btn danger','Remove'); rm.onclick=async()=>{ if(!confirm('Remove '+x.name+'? Its past orders stay in the log.')) return; const r=await api('/api/accounts/remove',{id:x.id}); if(r.error) alert(r.error); loadAccounts() }; c.append(rm) }
+    box.append(c) }) }
+async function setMode(x,mm){ if(mm==='auto'&&x.mode!=='auto'){ pendingAuto=x; $('#dlgp').textContent=(x.type==='paper'?'This is a practice account, so nothing real is sent. ':'Orders will go out the moment a signal appears, with no confirmation. ')+(REC?'For context: from '+REC.start.slice(0,4)+' to '+REC.end.slice(0,4)+' this setup won about '+Math.round(REC.win*100)+'% of the time at 3-to-1, about '+(REC.avg_r>=0?'+':'')+REC.avg_r.toFixed(2)+'R a trade, with flat and losing stretches along the way.':'Check the Record tab before relying on this.'); $('#dlg').classList.add('open'); $('#dyes').focus(); return }
+  const r=await api('/api/mode',{account:x.id,mode:mm}); if(r.error) alert(r.error); loadAccounts() }
+$('#dno').onclick=()=>$('#dlg').classList.remove('open');
+$('#dyes').onclick=async()=>{ $('#dlg').classList.remove('open'); const r=await api('/api/mode',{account:pendingAuto.id,mode:'auto'}); if(r.error) alert(r.error); loadAccounts() };
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') $('#dlg').classList.remove('open') });
+$('#atype').onchange=()=>$$('.hook').forEach(h=>h.hidden=$('#atype').value!=='webhook');
+$('#addform').onsubmit=async e=>{ e.preventDefault(); const f=new FormData(e.target), d=Object.fromEntries(f.entries()); d.live=f.get('live')==='on'; const r=await api('/api/accounts/add',d);
+  $('#amsg').textContent=r.error||'Added '+r.account.name+'. Choose Confirm or Auto on its card to use it.'; $('#amsg').className='msg'+(r.error?' err':''); if(!r.error){ e.target.reset(); $('#atype').onchange(); loadAccounts() } };
+
+/* ---------- pairing + devices ---------- */
+function pairScreen(){ if(es){ es.close(); es=null } if($('#pairform')) return;
+  const ua=navigator.userAgent, guess=/iPhone/.test(ua)?'iPhone':/iPad/.test(ua)?'iPad':/Android/.test(ua)?'Android phone':/Mac/.test(ua)?'Mac':/Windows/.test(ua)?'Windows PC':'Device';
+  document.body.innerHTML='<div class="wrap"><form class="pair card" id="pairform"><h2 style="margin-top:0">Pair this device</h2><p class="note" style="margin-top:0">On the computer running Day Read, open <b>Accounts → Devices</b> and press <b>Pair a device</b>. Type the code it shows.</p><label>Code<input id="pcode" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX"></label><label>Name for this device<input id="pname"></label><p class="msg" id="pmsg"></p><button class="btn" type="submit">Pair</button></form></div>';
+  $('#pname').value=guess; $('#pcode').focus();
+  $('#pairform').onsubmit=async e=>{ e.preventDefault(); const r=await fetch('/api/pair/redeem',{method:'POST',headers:{'X-DayRead':'1'},body:JSON.stringify({code:$('#pcode').value,name:$('#pname').value})}).then(r=>r.json());
+    if(r.ok) location.reload(); else { $('#pmsg').textContent=r.error||'Pairing failed.'; $('#pmsg').className='msg err' } } }
+let pairTimer=null;
+async function loadDevices(){ const r=await api('/api/devices'), box=$('#devlist'); box.textContent='';
+  if(!r.devices.length) box.append(el('div','empty','No devices paired.'));
+  r.devices.forEach(d=>{ const li=el('div','li'); li.append(el('span',null,d.name),el('span','date','last seen '+d.seen.replace('T',' ').slice(0,16)+' UTC')); const b=el('button','btn ghost','Remove'); b.onclick=async()=>{ await api('/api/devices/revoke',{id:d.id}); loadDevices() }; li.append(b); box.append(li) }); return r }
+$('#pairnew').onclick=async()=>{ const c=await api('/api/pair/new',{}), d=await loadDevices(), box=$('#pairbox'); box.hidden=false; let left=c.expires_in;
+  const where=d.lan?(d.addresses.length?'On the phone, open '+d.addresses.join(' or ')+' (same Wi-Fi), or this computer’s Tailscale address from anywhere.':'On the phone, open this computer’s address on port '+location.port+'.'):'Other devices cannot reach Day Read yet: quit it and start it with --lan (start_dayread.sh --lan).';
+  box.textContent=''; box.append(el('div','date','Pairing code'),el('div','code',c.code),el('div','date')); const lf=box.lastChild; box.append(el('p','note',where)); const cn=el('button','btn ghost','Cancel'); box.append(cn);
+  const tick=()=>{ lf.textContent=left>0?`Works once, for ${Math.floor(left/60)}:${String(left%60).padStart(2,'0')} more`:'Expired — press Pair a device again.'; left--; if(left<-1) clearInterval(pairTimer) };
+  clearInterval(pairTimer); tick(); pairTimer=setInterval(()=>{ tick(); if(left%5===0) loadDevices() },1000);
+  cn.onclick=async()=>{ await api('/api/pair/cancel',{}); clearInterval(pairTimer); box.hidden=true } };
+
+/* ---------- tabs + start ---------- */
+function tab(t){ $$('#tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t))); ['today','record','accounts'].forEach(s=>$('#'+s).hidden=s!==t);
+  if(t==='accounts'){ loadAccounts(); if(local) loadDevices() } if(t==='record'&&!$('#bout').children.length) runBacktest(); history.replaceState(null,'','#'+t) }
+$$('#tabs button').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
+const clock=()=>{ $('#date').textContent=new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'America/New_York'})+' · '+new Date().toLocaleTimeString('en-GB',{timeZone:'America/New_York',hour12:false})+' ET' }; clock(); setInterval(clock,1000);
+async function init(){ const s=await api('/api/state'); if(s.paired===false) return pairScreen(); local=!!s.local; $('#localonly').hidden=!local; $('#remoteonly').hidden=local; setRun(s); S=fresh(); render(); listen();
+  api('/api/backtest').then(r=>{ if(r&&r.n){ REC=r; render() } }).catch(()=>{});
+  const h=location.hash.slice(1); if(['today','record','accounts'].includes(h)) tab(h); $('#bto').value=new Date().toISOString().slice(0,10) }
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+# Everything is ignored except what is listed below.
+/*
+!/.gitignore
+!/README.md
+!/WRITEUP.md
+!/LICENSE.md
+!/public/
+!/app/
+!/tests/
+
+# The engine and its connection stay private, even if copied in by mistake.
+app/desk/signals.py
+app/desk/readfacts.py
+app/desk/private_paths.py
+app/dayread.py
+
+# No data, caches or local settings.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.parquet
+*.csv
+*.jsonl
+*.db
+.DS_Store
